@@ -1,13 +1,9 @@
 " vim-draft: buffers to write text in that aren't files. A draft is opened
 " by another plugin and hands its text on when it closes; a scratch is
 " opened by you and has nowhere to send it. Either can be saved to a file.
-if exists('g:loaded_roumail_draft')
-  finish
-endif
-let g:loaded_roumail_draft = 1
 
-" g:roumail_draft_save_dir: where scratches are saved. Unset: vim-draft/ in
-" the XDG state directory. Drafts are saved where vim-place keeps files
+" Scratches are saved in vim-draft/ in the XDG state directory, drafts where
+" vim-place keeps plugins' files
 
 " New scratch in a vertical split (!: in the current window)
 command! -bang Scratch call roumail_draft#scratch#new(<bang>0)
@@ -29,6 +25,6 @@ command! -bang -range=% -nargs=? -complete=customlist,roumail_draft#scratch#comp
 " directory
 command! -bang -nargs=? -complete=file DraftSave call roumail_draft#save(<bang>0, <q-args>)
 
-" Saved files of the current repository and g:roumail_draft_save_dir, newest
+" Saved drafts of the current repository (or directory) and saved scratches, newest
 " first, in the location list
 command! -bar DraftList call roumail_draft#list()

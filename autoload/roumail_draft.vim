@@ -17,10 +17,6 @@ function! roumail_draft#open(name, lines, OnClose, ...) abort
     autocmd BufWipeout <buffer> call s:close(str2nr(expand('<abuf>')))
   augroup END
   normal! G$
-  " Takes effect once the caller has set the draft up
-  if get(g:, 'roumail_draft_insert', 0)
-    startinsert!
-  endif
 endfunction
 
 function! s:save() abort
@@ -67,9 +63,8 @@ function! s:keep(draft, filetype) abort
     let l:dir = !empty(globpath(&runtimepath, 'autoload/roumail_place.vim', 1))
           \ ? roumail_place#dir('vim-draft', {'bufnr': a:draft.from}) : s:scratch_dir()
     let l:path = s:new_file(l:dir, a:filetype)
-    if writefile(split(a:draft.text, "\n", 1), l:path) == 0
-      return 'text kept in ' . fnamemodify(l:path, ':~')
-    endif
+    call writefile(split(a:draft.text, "\n", 1), l:path)
+    return 'text kept in ' . fnamemodify(l:path, ':~')
   catch
   endtry
   call setreg('"', a:draft.text, 'l')
@@ -90,13 +85,11 @@ function! roumail_draft#save(bang, arg) abort
   endif
   if filereadable(l:path) && !a:bang && l:path !=# l:draft.path
     echoerr 'DraftSave: ' . fnamemodify(l:path, ':~') . ' exists (add ! to overwrite)'
-    return
   endif
   call mkdir(fnamemodify(l:path, ':h'), 'p')
-  if writefile(getline(1, '$'), l:path) != 0
-    echoerr 'DraftSave: cannot write ' . fnamemodify(l:path, ':~')
-    return
-  endif
+  " A failed write is an error before the path is taken: the buffer stays as
+  " it was
+  call writefile(getline(1, '$'), l:path)
   let l:draft.path = l:path
   echo 'DraftSave: wrote ' . fnamemodify(l:path, ':~')
 endfunction
@@ -111,7 +104,8 @@ function! s:target(draft, arg) abort
     return empty(a:draft.path) ? s:new_file(s:save_dir(a:draft), &filetype) : a:draft.path
   endif
   let l:path = fnamemodify(a:arg =~# '^[~$]' ? expand(a:arg) : a:arg, ':p')
-  return isdirectory(l:path) || l:path =~# '/$'
+  " :p ends an existing directory with /
+  return l:path =~# '/$'
         \ ? s:new_file(substitute(l:path, '/\+$', '', ''), &filetype) : l:path
 endfunction
 
@@ -135,11 +129,9 @@ function! s:save_dir(draft) abort
         \ : roumail_place#dir('vim-draft', {'bufnr': a:draft.from})
 endfunction
 
-" g:roumail_draft_save_dir itself when it is set, so scratches are files of
-" yours; else vim-draft's XDG state directory
+" vim-draft/ in the XDG state directory
 function! s:scratch_dir() abort
-  let l:dir = !empty(get(g:, 'roumail_draft_save_dir', '')) ? expand(g:roumail_draft_save_dir)
-        \ : (empty($XDG_STATE_HOME) ? expand('~/.local/state') : $XDG_STATE_HOME) . '/vim-draft'
+  let l:dir = (empty($XDG_STATE_HOME) ? expand('~/.local/state') : $XDG_STATE_HOME) . '/vim-draft'
   call mkdir(l:dir, 'p')
   return l:dir
 endfunction

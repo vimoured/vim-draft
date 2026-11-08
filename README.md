@@ -1,11 +1,11 @@
 # vim-draft
 
-Buffers to write text in that aren't files:
+Buffers to write text in, apart from files:
 
 - A **draft** is opened by another plugin (a comment, a reply, an ask) and
   hands its text on to that plugin when it closes.
-- A **scratch** is opened by you and has nowhere to send its text: closing it
-  drops it.
+- A **scratch** is opened by you and keeps its text while it is open:
+  closing it drops it.
 
 `:DraftSave` writes either to a file and leaves the buffer as it was. In any
 other buffer, such as a plugin's output, it saves the text as a draft.
@@ -15,7 +15,7 @@ other buffer, such as a plugin's output, it saves the text as a draft.
 The core is vim-draft on its own:
 
 ```vim
-Plug 'roumail/vim-draft'
+Plug 'vimoured/vim-draft'
 ```
 
 That gives you drafts for other plugins, the scratch commands, and
@@ -33,7 +33,7 @@ All of it:
 ```vim
 Plug 'tpope/vim-fugitive'
 Plug 'roumail/vim-place'
-Plug 'roumail/vim-draft'
+Plug 'vimoured/vim-draft'
 ```
 
 ## Commands
@@ -59,7 +59,7 @@ It works as a git commit message:
 | `:wq` (or `:q` after `:w`) | Close it and hand on what was last saved. |
 | `:q!` before any `:w` | Drop it. To drop a saved draft, empty it and `:wq`. |
 
-Closing a draft never quits Vim, which would lose the text: when it is the
+Closing a draft keeps Vim running, so the text is handed on: when it is the
 last window (after `:only`), the buffer it was opened from opens beside it.
 
 When the plugin fails to take the text it is handed, the text is kept in a
@@ -72,6 +72,8 @@ can't be written), and the error says where.
 and leaves the buffer as it was: a draft still hands on what `:w` last saved
 when it closes, and a scratch is still dropped when it closes. Any other
 buffer, such as a plugin's output, is saved as a draft opened from itself.
+A write that fails is an error and loses nothing: the buffer stays as it
+was, and a draft still hands on what `:w` saved.
 
 | Argument | Written to |
 | --- | --- |
@@ -80,20 +82,13 @@ buffer, such as a plugin's output, is saved as a draft opened from itself.
 | none, saved before | The file it was last saved to. |
 | none | A new file, named for the time, in the save directory. |
 
-The save directory of a scratch is `g:roumail_draft_save_dir`, or, when it
-isn't set, `vim-draft/` in the XDG state directory. That of a draft is
+The save directory of a scratch is `vim-draft/` in the XDG state directory
+(`$XDG_STATE_HOME`, else `~/.local/state`). That of a draft is
 `vim-draft/` where [vim-place](https://github.com/roumail/vim-place) keeps
 plugins' files: the git directory of the repository it was opened from (for
 a buffer that isn't a file, the current directory's), else outside a
 repository, for the current directory. Files end in `.md` when the
 buffer is markdown, else `.txt`.
-
-## Settings
-
-| Variable | Default |
-| --- | --- |
-| `g:roumail_draft_save_dir` | Unset: saved scratches go in `vim-draft/` in the XDG state directory (`$XDG_STATE_HOME`, else `~/.local/state`). Set it, e.g. to `~/scratch`, to keep them there. |
-| `g:roumail_draft_insert` | `0`: a draft opens in normal mode at the end of its text; `1` starts in insert mode there. |
 
 ## For other plugins
 
@@ -105,8 +100,8 @@ call roumail_draft#open('my-plugin://note', ['first line'],
 
 `roumail_draft#open(name, lines, OnClose [, opts])` opens the draft named
 `name` (with `/<bufnr>` added when a buffer has that name), starting with
-`lines`, and leaves it the current buffer, with the cursor at the end of its
-last line. Once it closes with text saved, `OnClose(text)` gets that text
+`lines`, and leaves it the current buffer, in normal mode with the cursor at
+the end of its last line. Once it closes with text saved, `OnClose(text)` gets that text
 without the blank lines around it.
 
 | Option | Default |
@@ -118,16 +113,13 @@ without the blank lines around it.
 The plugin that opens a draft sets what is its own on the buffer afterwards:
 its `filetype`, its buffer variables and its `statusline`. The rest is
 vim-draft's: `buftype`, `bufhidden`, the draft's autocommands and
-`b:roumail_draft`, which a plugin neither sets nor reads.
+`b:roumail_draft`, which is vim-draft's alone.
 
 A plugin that keeps files, or shows paths, asks
 [vim-place](https://github.com/roumail/vim-place) where.
 
 ## Tests
 
-```sh
-vim -Nu NONE -i NONE -Es -S test/run.vim
-```
-
-vim-place and vim-fugitive come from `$VIM_PLACE` and `$FUGITIVE`, else
-vim-plug's copies.
+Tested by [vim-suite](https://github.com/vimoured/vim-suite), in
+`test/vim-draft.vim`, with the dotfiles and the plugins that use it. Every
+pull request runs them.
