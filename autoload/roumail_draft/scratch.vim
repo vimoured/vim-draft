@@ -34,7 +34,6 @@ function! roumail_draft#scratch#buf(bang, line1, line2, buf) abort
       let l:path = expand(a:buf)
       if !filereadable(l:path)
         echoerr 'ScratchBuf: no buffer or file matching ' . a:buf
-        return
       endif
       call roumail_draft#scratch#new(a:bang)
       call setline(1, readfile(l:path))
