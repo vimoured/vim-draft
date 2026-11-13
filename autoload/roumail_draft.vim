@@ -73,7 +73,8 @@ endfunction
 
 " Writes the text as it is now to a file, leaving the buffer as it was: a
 " draft still hands on what :w last saved when it closes. Any other buffer
-" is saved as a draft opened from itself
+" is saved as a draft opened from itself. The argument is vim-place's save
+" contract, with the deviations in the README (no names)
 function! roumail_draft#save(bang, arg) abort
   if !exists('b:roumail_draft')
     let b:roumail_draft = {'kind': 'buffer', 'path': '', 'from': bufnr()}
