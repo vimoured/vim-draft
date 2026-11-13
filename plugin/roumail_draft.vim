@@ -1,9 +1,12 @@
-" vim-draft: buffers to write text in that aren't files. A draft is opened
-" by another plugin and hands its text on when it closes; a scratch is
-" opened by you and has nowhere to send it. Either can be saved to a file.
+" vim-draft: drafts, text written in a buffer that isn't a file. A plugin's
+" draft is opened by another plugin and hands its text on when it closes; a
+" scratch is a draft you open yourself, with nowhere to send it. Any draft
+" can be kept as a file: Draft before a command's name acts on drafts
+" (:DraftSave, :Drafts), Draft after it writes a command's text in a
+" plugin's draft (:CommentDraft, :AiDraft).
 
-" Scratches are saved in vim-draft/ in the XDG state directory, drafts where
-" vim-place keeps plugins' files
+" Scratches are kept in vim-draft/ in the XDG state directory, a plugin's
+" drafts where vim-place keeps plugins' files
 
 " New scratch in a vertical split (!: in the current window)
 command! -bang Scratch call roumail_draft#scratch#new(<bang>0)
@@ -19,12 +22,12 @@ command! -nargs=+ -complete=customlist,roumail_draft#scratch#complete_from Scrat
 command! -bang -range=% -nargs=? -complete=customlist,roumail_draft#scratch#complete_buf ScratchBuf
       \ call roumail_draft#scratch#buf(<bang>0, <line1>, <line2>, <q-args>)
 
-" Write the buffer to a file, which it stays apart from, as a draft unless
-" it is a scratch, as vim-place's save contract has it: a name, a path, a
-" directory, or nothing for the file it was last saved to
+" Keep the draft (or any other buffer, as a draft) as a file, which it stays
+" apart from, as vim-place's save contract has it: a name, a path, a
+" directory, or nothing for the file it was last kept in
 command! -bang -nargs=? -complete=customlist,roumail_draft#complete DraftSave
       \ call roumail_draft#save(<bang>0, <q-args>)
 
-" Saved drafts of the current repository (or directory) and saved scratches,
-" as vim-lists' list of saves
+" Kept drafts: this repository's (or directory's), and scratches, as
+" vim-lists' list of saves
 command! -bar Drafts call roumail_draft#drafts()

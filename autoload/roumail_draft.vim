@@ -71,10 +71,10 @@ function! s:keep(draft, filetype) abort
   return 'text kept in the unnamed register'
 endfunction
 
-" Writes the text as it is now to a file, leaving the buffer as it was: a
-" draft still hands on what :w last saved when it closes. Any other buffer
-" is saved as a draft opened from itself. The argument is vim-place's save
-" contract, with the deviations in the README (no names)
+" Keeps the draft's text as it is now in a file, leaving the buffer as it
+" was: a plugin's draft still hands on what :w last saved when it closes.
+" Any other buffer is kept as a draft opened from itself. The argument is
+" vim-place's save contract, with the deviations in the README
 function! roumail_draft#save(bang, arg) abort
   if !exists('b:roumail_draft')
     let b:roumail_draft = {'kind': 'buffer', 'path': '', 'from': bufnr()}
@@ -109,7 +109,7 @@ endfunction
 " directory to write a new one in, or a save by name
 function! s:target(draft, arg) abort
   if empty(a:arg)
-    if empty(a:draft.path) && a:draft.kind !=# 'scratch' && !s:requires(':DraftSave of a draft')
+    if empty(a:draft.path) && a:draft.kind !=# 'scratch' && !s:requires(':DraftSave of a plugin''s draft')
       return ''
     endif
     return empty(a:draft.path) ? s:new_file(s:save_dir(a:draft), &filetype) : a:draft.path
@@ -138,8 +138,8 @@ function! s:new_file(dir, filetype) abort
   return l:path
 endfunction
 
-" A scratch is saved outside any repository; a draft, as a plugin's files
-" are, in the repository of the buffer it was opened from
+" A scratch is kept outside any repository; a plugin's draft, as a plugin's
+" files are, in the repository of the buffer it was opened from
 function! s:save_dir(draft) abort
   return a:draft.kind ==# 'scratch' ? s:scratch_dir()
         \ : roumail_place#dir('vim-draft', {'bufnr': a:draft.from})
@@ -172,8 +172,8 @@ function! s:files(dirs) abort
         \ ? getftime(b) - getftime(a) : a ==# b ? 0 : a <# b ? 1 : -1})
 endfunction
 
-" :Drafts: saved drafts of this repository or directory, and saved
-" scratches, as vim-lists' list of saves
+" :Drafts: kept drafts, this repository's (or directory's) and scratches, as
+" vim-lists' list of saves
 function! roumail_draft#drafts() abort
   if !s:requires(':Drafts')
     return
