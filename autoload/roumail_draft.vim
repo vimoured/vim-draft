@@ -84,7 +84,8 @@ function! roumail_draft#save(bang, arg) abort
   if empty(l:path)
     return
   endif
-  if filereadable(l:path) && !a:bang && l:path !=# l:draft.path
+  " A name is the draft's to save again; a path you gave, only with !
+  if s:is_path(a:arg) && filereadable(l:path) && !a:bang && l:path !=# l:draft.path
     echoerr 'DraftSave: ' . fnamemodify(l:path, ':~') . ' exists (add ! to overwrite)'
   endif
   call mkdir(fnamemodify(l:path, ':h'), 'p')
@@ -95,14 +96,28 @@ function! roumail_draft#save(bang, arg) abort
   echo 'DraftSave: wrote ' . fnamemodify(l:path, ':~')
 endfunction
 
-" The file last written, unless the argument names another file or a
-" directory to write a new one in
+" A path has a / or starts with ~ or .; anything else is a save's name
+function! s:is_path(arg) abort
+  return a:arg =~# '/' || a:arg =~# '^[~.]'
+endfunction
+
+function! s:ext(filetype) abort
+  return a:filetype ==# 'markdown' ? '.md' : '.txt'
+endfunction
+
+" The file last written, unless the argument names another file, a
+" directory to write a new one in, or a save by name
 function! s:target(draft, arg) abort
   if empty(a:arg)
     if empty(a:draft.path) && a:draft.kind !=# 'scratch' && !s:requires(':DraftSave of a draft')
       return ''
     endif
     return empty(a:draft.path) ? s:new_file(s:save_dir(a:draft), &filetype) : a:draft.path
+  elseif !s:is_path(a:arg)
+    if a:draft.kind !=# 'scratch' && !s:requires(':DraftSave of a name')
+      return ''
+    endif
+    return s:save_dir(a:draft) . '/' . a:arg . s:ext(&filetype)
   endif
   let l:path = fnamemodify(a:arg =~# '^[~$]' ? expand(a:arg) : a:arg, ':p')
   " :p ends an existing directory with /
@@ -113,7 +128,7 @@ endfunction
 " Named for the time, so they sort
 function! s:new_file(dir, filetype) abort
   let l:base = a:dir . '/' . strftime('%Y%m%d-%H%M%S')
-  let l:ext = a:filetype ==# 'markdown' ? '.md' : '.txt'
+  let l:ext = s:ext(a:filetype)
   let l:path = l:base . l:ext
   let l:n = 1
   while filereadable(l:path)
@@ -137,29 +152,79 @@ function! s:scratch_dir() abort
   return l:dir
 endfunction
 
-" Saved drafts of this repository or directory, and saved scratches, newest
-" first, in the location list
-function! roumail_draft#list() abort
-  if !s:requires(':DraftList')
+" The saves where names are, newest first, then files once it's a path
+function! roumail_draft#complete(lead, cmdline, pos) abort
+  if s:is_path(a:lead) || empty(globpath(&runtimepath, 'autoload/roumail_place.vim', 1))
+    return getcompletion(a:lead, 'file')
+  endif
+  let l:draft = get(b:, 'roumail_draft', {'kind': 'buffer', 'from': bufnr()})
+  return filter(map(s:files([s:save_dir(l:draft)]), 'fnamemodify(v:val, ":t:r")'),
+        \ 'stridx(v:val, a:lead) == 0')
+endfunction
+
+" The files in dirs, newest first
+function! s:files(dirs) abort
+  let l:files = []
+  for l:dir in filter(copy(a:dirs), '!empty(v:val)')
+    call extend(l:files, filter(glob(l:dir . '/*', 1, 1), 'filereadable(v:val)'))
+  endfor
+  return sort(l:files, {a, b -> getftime(a) != getftime(b)
+        \ ? getftime(b) - getftime(a) : a ==# b ? 0 : a <# b ? 1 : -1})
+endfunction
+
+" :Drafts: saved drafts of this repository or directory, and saved
+" scratches, as vim-lists' list of saves
+function! roumail_draft#drafts() abort
+  if !s:requires(':Drafts')
+    return
+  endif
+  if empty(globpath(&runtimepath, 'autoload/roumail_lists.vim', 1))
+    echohl ErrorMsg
+    echomsg 'vim-draft: :Drafts needs vim-lists, which is not installed'
+    echohl None
     return
   endif
   let l:draft = get(b:, 'roumail_draft', {})
   let l:from = get(l:draft, 'kind', '') ==# 'draft' ? l:draft.from : bufnr()
   let l:dirs = uniq(sort([roumail_place#dir('vim-draft', {'bufnr': l:from}), s:scratch_dir()]))
-  let l:files = []
-  for l:dir in filter(l:dirs, '!empty(v:val)')
-    call extend(l:files, filter(glob(l:dir . '/*', 1, 1), 'filereadable(v:val)'))
-  endfor
-  if empty(l:files)
-    echo 'DraftList: nothing saved in ' . join(map(l:dirs, 'fnamemodify(v:val, ":~")'), ' or ')
-    return
+  call roumail_lists#open('vim-draft://drafts', {
+        \ 'fetch': function('s:drafts_fetch'),
+        \ 'heading': {drafts -> ['Drafts (' . len(drafts) . ')']},
+        \ 'rows': function('s:drafts_rows'),
+        \ 'id': {d -> d.file},
+        \ 'match': {d -> d.name . ' ' . d.first},
+        \ 'delete': function('s:drafts_delete'),
+        \ 'keys': [{'key': '<CR>', 'hint': 'open', 'call': function('s:drafts_open')}]},
+        \ {'roumail_draft_dirs': l:dirs})
+endfunction
+
+function! s:drafts_fetch() abort
+  return map(s:files(b:roumail_draft_dirs), {_, f -> {'file': f,
+        \ 'name': fnamemodify(f, ':t:r'), 'time': getftime(f),
+        \ 'first': get(readfile(f, '', 1), 0, '')}})
+endfunction
+
+function! s:drafts_rows(drafts) abort
+  if empty(a:drafts)
+    return [{'lines': ['(no drafts here: save one with :DraftSave)']}]
   endif
-  call sort(l:files, {a, b -> getftime(b) - getftime(a)})
-  call setloclist(0, [], ' ', {
-        \ 'title': 'DraftList',
-        \ 'items': map(l:files, '{"filename": v:val, "lnum": 1, "text": get(readfile(v:val, "", 1), 0, "")}'),
-        \ })
-  lopen
+  return map(copy(a:drafts), {_, d -> {'item': d, 'lines': [printf('%-20s  %s  %s',
+        \ d.name, strftime('%Y-%m-%d %H:%M', d.time), d.first)]}})
+endfunction
+
+function! s:drafts_delete(draft) abort
+  if confirm('Delete ' . fnamemodify(a:draft.file, ':t') . '?', "&Yes\n&No", 2) == 1
+    call delete(a:draft.file)
+  endif
+endfunction
+
+" A saved draft is a file to edit: opened where the list was opened from
+function! s:drafts_open() abort
+  let l:draft = roumail_lists#item()
+  if !empty(l:draft)
+    wincmd p
+    execute 'edit' fnameescape(l:draft.file)
+  endif
 endfunction
 
 " vim-place keeps drafts per repository: what needs it says so when it isn't
