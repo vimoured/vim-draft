@@ -33,6 +33,21 @@ Plug 'vimoured/vim-draft'
 | `:DraftSave[!] [path\|dir/]` | Write the buffer to a file and leave it as it was. |
 | `:DraftList` | Saved drafts and scratches in the location list, newest first. |
 
+`:DraftSave` keeps vim-place's
+[save contract](https://github.com/vimoured/vim-place#the-save-contract), and
+`:DraftList` shows the saves as vim-lists'
+[list of saves](https://github.com/vimoured/vim-lists#a-list-of-saves), apart
+from these deviations:
+
+| Deviation | |
+| --- | --- |
+| `:DraftSave` takes no names: a word is a file in the current directory, and `<Tab>` completes files only. | To align: it came before the contract. |
+| `:DraftList` is named for the verb; it would be `:Drafts`. | To align: it came before the contract. |
+| `:DraftList` is a location list, not a vim-lists list: no title with a count, no `dd`, `/` or `r`, and no row when nothing is saved. | To align: it came before the contract. |
+| No `:DraftLoad`: a saved draft is opened as the file it is (`<CR>` in `:DraftList`). | Needed: a saved draft is a file to edit, not a buffer to make again. |
+| A new file is `.md` for a markdown buffer, else `.txt`. | Needed: the extension follows the text. |
+| A scratch saves without vim-place, under `$XDG_STATE_HOME/vim-draft`, and `:DraftList` lists those too. | Needed: a scratch belongs to no repository. |
+
 A draft works like a git commit message: `:w` saves, `:wq` closes and hands on
 what was saved, and `:q!` before any `:w` drops it.
 
