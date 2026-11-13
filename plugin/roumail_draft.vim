@@ -20,11 +20,11 @@ command! -bang -range=% -nargs=? -complete=customlist,roumail_draft#scratch#comp
       \ call roumail_draft#scratch#buf(<bang>0, <line1>, <line2>, <q-args>)
 
 " Write the buffer to a file, which it stays apart from, as a draft unless
-" it is a scratch: the given path, a new timestamped file in the given
-" directory, else the file it was last saved to, else a new one in the save
-" directory
-command! -bang -nargs=? -complete=file DraftSave call roumail_draft#save(<bang>0, <q-args>)
+" it is a scratch, as vim-place's save contract has it: a name, a path, a
+" directory, or nothing for the file it was last saved to
+command! -bang -nargs=? -complete=customlist,roumail_draft#complete DraftSave
+      \ call roumail_draft#save(<bang>0, <q-args>)
 
-" Saved drafts of the current repository (or directory) and saved scratches, newest
-" first, in the location list
-command! -bar DraftList call roumail_draft#list()
+" Saved drafts of the current repository (or directory) and saved scratches,
+" as vim-lists' list of saves
+command! -bar Drafts call roumail_draft#drafts()
